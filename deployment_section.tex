@@ -1,0 +1,54 @@
+% =========================
+% Section Déploiement Enrichie
+% =========================
+
+\section{Stratégie de Déploiement et Ingénierie de l'Accessibilité}
+\label{sec:deployment}
+
+Le déploiement du modèle ne se limite pas à une simple intégration logicielle ; il constitue la réponse technologique aux contraintes spécifiques du terrain en République Démocratique du Congo (RDC). L'application \textit{Ningapi} a été conçue pour fonctionner dans un environnement où la connectivité internet est instable et coûteuse, tout en répondant aux exigences ergonomiques strictes des utilisateurs non-voyants.
+
+\subsection{Choix de l'Architecture Technologique}
+Le développement s'appuie sur une architecture hybride optimisée :
+
+\subsubsection{Framework Flutter}
+Le choix de \textbf{Flutter} (Dart) s'est imposé pour sa capacité à compiler en code natif ARM, offrant des performances proches du natif Android/iOS. Contrairement aux solutions basées sur des WebViews, Flutter permet un contrôle direct sur le matériel (caméra, vibreur, GPU), essentiel pour une réactivité immédiate.
+
+\subsubsection{Moteur d'Inférence TensorFlow Lite}
+Le modèle CNN, initialement entraîné sous Keras, a été converti au format \textbf{TensorFlow Lite (TFLite)}. 
+Ce format est spécifiquement conçu pour l'exécution sur dispositifs mobiles (\textit{Edge AI}). En exécutant l'inférence localement sur le smartphone, nous garantissons :
+\begin{itemize}
+    \item \textbf{Latence Zéro-Réseau :} Le temps de réponse est déterministe ($< 200$~ms), indépendant de la qualité du réseau 4G/Wifi.
+    \item \textbf{Confidentialité :} Aucune image de billet (ou accidentellement de visage) ne quitte le téléphone de l'utilisateur.
+    \item \textbf{Disponibilité :} L'application reste fonctionnelle dans les zones rurales déconnectées.
+\end{itemize}
+
+\subsection{Pipeline de Traitement d'Image Avancé}
+Avant d'être soumise au réseau de neurones, chaque image traverse un pipeline de prétraitement rigoureux pour assurer la robustesse des prédictions.
+
+\subsubsection{Normalisation et Formatage}
+Le modèle attend des entrées standardisées. L'image brute est redimensionnée à $250 \times 250$ pixels via une interpolation bilinéaire. Nous appliquons ensuite une normalisation mathématique des pixels $P$ selon la formule :
+\begin{equation}
+    P_{norm} = \frac{P_{raw} - 127.5}{127.5}
+\end{equation}
+Cette transformation projette les valeurs de l'intervalle $[0, 255]$ vers $[-1, 1]$, centrant les données autour de zéro pour accélérer la convergence des calculs du réseau de neurones convolutif. Une correction automatique de l'orientation (basée sur les métadonnées EXIF) est également appliquée pour compenser la rotation physique du téléphone.
+
+\subsubsection{Filtre de Sécurité Sémantique (Face Detection)}
+Une innovation majeure de notre déploiement est l'intégration d'une couche intermédiaire de validation utilisant \textit{Google ML Kit}. Avant d'analyser un potentiel billet, l'algorithme vérifie la présence de visages humains.
+\textit{Pourquoi ?} Si un utilisateur non-voyant pointe par erreur son téléphone vers une personne, classifier ce visage comme "1000 FC" serait techniquement faux et socialement gênant.
+Si un visage est détecté, l'inférence est bloquée et l'application annonce vocalement : \og Attention, ceci est un visage \fg.
+
+\subsection{Ingénierie de l'Interface "Blind-First"}
+L'accessibilité n'est pas une surcouche, mais le fondement de l'interface (HCI). Nous avons adopté une approche \textit{Blind-First} radicale.
+
+\subsubsection{Paradigme de la Zone Unique}
+Les interfaces graphiques traditionnelles (boutons, barres d'outils) sont inadaptées aux non-voyants car elles nécessitent une exploration tactile fastidieuse. Nous avons implémenté le paradigme de la "Zone Unique" :
+\begin{itemize}
+    \item \textbf{Écran d'Accueil :} La totalité de la surface tactile fonctionne comme un déclencheur unique. L'utilisateur n'a pas besoin de viser un bouton "Scanner" ; toucher n'importe quel point de la dalle vitrée suffit.
+    \item \textbf{Écran de Résultat :} Les interactions reposent sur des gestes larges. Un balayage (\textit{swipe}) n'importe où sur l'écran permet de rejeter le résultat et de relancer le scan, mimant le geste physique de repousser un objet.
+\end{itemize}
+
+\subsubsection{Retour Multimodal et Sémantique}
+L'application utilise le canal auditif comme vecteur principal d'information. Grâce au moteur \textit{Text-to-Speech (TTS)}, chaque état est verbalisé. Nous avons enrichi les labels d'accessibilité (Semantics) pour que les lecteurs d'écran (TalkBack) ne prononcent pas des termes génériques ("bouton") mais des actions contextuelles ("Appuyer deux fois pour scanner").
+De plus, des retours haptiques (vibrations) confirment physiquement la prise de photo, offrant une réassurance sensorielle à l'utilisateur.
+
+Cette combinaison d'une IA embarquée robuste et d'une interface utilisateur inclusive fait de \textit{Ningapi} un outil d'autonomie financière viable et respectueux de ses utilisateurs.

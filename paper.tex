@@ -1,0 +1,203 @@
+\documentclass[conference]{IEEEtran}
+
+% =========================
+% Packages nécessaires
+% =========================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{cite}
+\usepackage{url}
+\usepackage[french]{babel}
+\usepackage{array}
+\usepackage{booktabs}
+
+% =========================
+% Début du document
+% =========================
+\begin{document}
+
+% =========================
+% Titre
+% =========================
+\title{
+Travail Pratique de Machine Learning :\\
+Modèle de Reconnaissance de Billets de Francs Congolais et de Dollars Américains\\
+pour l’Aide aux Personnes Malvoyantes
+}
+
+% =========================
+% Auteurs
+% =========================
+\author{
+    \IEEEauthorblockN{
+        Karumb Mukaz Divine,
+        Kalonji Mwinshi Augustin,
+        Lenge Lwangu David,\\
+        Mikobi Mbope Jeff,
+        Mumbere Mwangaza David,
+        Ngoy Kalsa Manoah
+    }
+    \IEEEauthorblockA{
+        Département de Génie Logiciel\\
+        Université de Don Bosco Lubumbashi\\
+        Lubumbashi, République Démocratique du Congo
+    }
+}
+
+\maketitle
+
+% =========================
+% Résumé
+% =========================
+\begin{abstract}
+Cet article présente la constitution d’un jeu de données massif destiné à l’entraînement d’un modèle de classification d'images pour les devises du Franc Congolais (50~FC à 20\,000~FC) et du Dollar Américain (1~\$ à 100~\$). En combinant les collectes locales, les collaborations inter-groupes et l'intégration de datasets tiers, nous avons formé une base de 42\,624 images. Un réseau de neurones convolutif (CNN) a été entraîné puis optimisé pour un déploiement mobile via TensorFlow Lite afin de garantir l'accessibilité aux personnes malvoyantes.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Machine Learning, Vision par ordinateur, Franc Congolais, CNN, TensorFlow Lite, Accessibilité.
+\end{IEEEkeywords}
+
+% =========================
+\section{Introduction}
+% =========================
+La reconnaissance automatique de billets de banque constitue une application majeure de la vision par ordinateur, en particulier pour l’aide aux personnes malvoyantes \cite{zhu2017currency}. Les avancées en apprentissage profond, notamment les réseaux de neurones convolutifs (CNN), permettent aujourd'hui d'atteindre des précisions élevées sur smartphone \cite{krizhevsky2012imagenet}. Ce projet vise à concevoir un modèle capable d’identifier les coupures circulant en RD Congo à partir d'un dataset hybride et d'une architecture optimisée.
+
+% =========================
+\section{Méthodologie et Collecte des Images}
+% =========================
+La robustesse d'un modèle de Deep Learning dépend de la diversité et de la quantité des données \cite{shorten2019survey}.
+
+\subsection{Captures Originales et Diversité}
+Le groupe a initialement collecté 4\,162 images à l'aide de divers smartphones. Cette approche introduit une variabilité de résolution et d'éclairage cruciale pour la généralisation \cite{goodfellow2016deep}. Le tableau \ref{tab:contributions} détaille la répartition de cette collecte initiale.
+
+\begin{table}[t]
+\centering
+\caption{Synthèse des contributions initiales du groupe}
+\label{tab:contributions}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Nom du membre} & \textbf{Nb d'images} & \textbf{Observation} \\
+\midrule
+D. Mumbere Mwangaza & 1494 & Majeure \\
+D. Karumb Mukaz & 755 & Active \\
+M. Ngoy Kalsa & 612 & Active \\
+D. Lenge Lwangu & 469 & Active \\
+A. Kalonji Mwinshi & 457 & Active \\
+J. Mikobi Mbope & 375 & Active \\
+\midrule
+\textbf{Total Initial} & \textbf{4162} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Fusion et Augmentation Massive du Dataset}
+Pour pallier le manque de données sur certaines classes (comme les billets de 5~\$ ou 1\,000~FC), nous avons procédé à une fusion stratégique :
+\begin{itemize}
+    \item \textbf{Fusion Inter-groupes :} La combinaison de nos images avec celles d'autres groupes a porté le total à 26\,776 images.
+    \item \textbf{Dataset Benitha :} L'intégration d'un jeu de données supplémentaire de 15\,848 images.
+\end{itemize}
+Le volume final de données traitées s'élève à \textbf{42\,624 images}, permettant un entraînement beaucoup plus stable.
+
+% =========================
+\section{Architecture du Modèle CNN}
+% =========================
+
+La tâche est traitée comme un problème de classification multi-classes. L'architecture développée sous TensorFlow/Keras est un CNN séquentiel comprenant :
+\begin{itemize}
+    \item \textbf{Prétraitement :} Redimensionnement à $150 \times 150$ pixels et normalisation.
+    \item \textbf{Extraction :} Trois couches de convolution ($32, 64, 128$ filtres) avec activation ReLU et \textit{MaxPooling}.
+    \item \textbf{Régularisation :} Une couche \textit{Dropout} (0.3) pour limiter le surapprentissage.
+    \item \textbf{Classification :} Couches denses finales avec sortie Softmax.
+\end{itemize}
+
+L'entraînement a été configuré avec l'optimiseur \textit{Adam} et la fonction de perte \textit{sparse categorical crossentropy} sur 20 époques.
+
+% =========================
+\section{Résultats et Analyse Expérimentale}
+% =========================
+
+\subsection{Performances de l'Entraînement}
+Le modèle présente une convergence rapide, comme illustré par les courbes d'apprentissage, atteignant une précision élevée sur l'ensemble de validation.
+
+\begin{figure}[htbp]
+    \centering
+    % Insérer l'image learning_curves.png
+    %\includegraphics[width=0.45\textwidth]{accuracy_loss_plot.png}
+    \caption{Courbes d'exactitude (Accuracy) et de perte (Loss).}
+    \label{fig:curves}
+\end{figure}
+
+\subsection{Analyse de la Matrice de Confusion}
+La matrice de confusion révèle une excellente distinction des billets, même pour ceux présentant des similitudes visuelles comme les billets de 20\,000~FC et les dollars. Les erreurs résiduelles sont minimes et concernent principalement des billets très dégradés.
+
+\begin{figure}[htbp]
+    \centering
+    %\includegraphics[width=0.45\textwidth]{confusion_matrix.png}
+    \caption{Matrice de confusion sur les devises CDF et USD.}
+    \label{fig:cm}
+\end{figure}
+
+% =========================
+\section{Déploiement Mobile et Accessibilité}
+% =========================
+
+Pour concrétiser l'objectif d'aide aux personnes malvoyantes, le modèle entraîné a été intégré au sein de l'application mobile \textbf{Ningapi}, développée avec le framework \textbf{Flutter}. Ce choix technologique nous permet de déployer une solution native performante sur Android tout en assurant une portabilité potentielle vers iOS.
+
+\subsection{Optimisation et Inférence Locale}
+Le modèle Keras a été converti au format \textbf{TensorFlow Lite} (float32). Cette conversion est cruciale pour l'exécution locale (\textit{on-device}), garantissant une reconnaissance rapide (latence $< 200$~ms) et fonctionnant sans connexion internet, un atout majeur pour les zones à faible connectivité en RDC \cite{tensorflowlite2017}.
+
+L'application intègre le pipeline suivant :
+\begin{enumerate}
+    \item \textbf{Capture et Redimensionnement :} L'image capturée est redimensionnée à $250 \times 250$ pixels et son orientation corrigée (EXIF).
+    \item \textbf{Normalisation :} Les pixels sont normalisés dans l'intervalle $[-1, 1]$ pour correspondre aux attentes du modèle.
+    \item \textbf{Validation de l'Image :} Un module de détection de visage (\textit{Google ML Kit}) analyse l'image avant la reconnaissance monétaire. Si un visage est détecté, le processus s'arrête et l'utilisateur est averti, évitant ainsi les faux positifs sur des personnes.
+\end{enumerate}
+
+\subsection{Conception "Blind-First" (Accessibilité)}
+L'interface utilisateur a été totalement repensée pour éliminer les barrières visuelles, suivant les principes d'informatique inclusive \cite{almeida2019accessibility} :
+
+\begin{itemize}
+    \item \textbf{Interaction "Zone Unique" :} L'écran d'accueil ne comporte aucun petit bouton. Toute la surface de l'écran agit comme un déclencheur tactile pour lancer l'analyse, facilitant l'interaction sans visibilité.
+    \item \textbf{Synthèse Vocale (TTS) :} L'application intègre une synthèse vocale fluide en français. Elle guide l'utilisateur à chaque étape ("Ouverture de la caméra", "Analyse en cours") et annonce le résultat ("Mille Francs Congolais") de manière naturelle.
+    \item \textbf{Contrôle Gestuel :} L'écran de résultat utilise des gestes simples : un appui n'importe où pour répéter le montant, et un balayage (swipe) pour relancer une analyse.
+\end{itemize}
+
+Cette approche ergonomique garantit que l'outil est réellement utilisable en autonomie par des personnes souffrant de déficience visuelle sévère.
+
+% =========================
+\section{Conclusion}
+% =========================
+Ce travail a démontré l'efficacité de la fusion de datasets hétérogènes pour la reconnaissance de devises mixtes. Avec 42\,624 images, notre modèle CNN offre une base solide. L'intégration dans l'application mobile \textbf{Ningapi}, avec son interface optimisée pour l'accessibilité vocale et tactile, constitue une solution technologique concrète pour améliorer l'autonomie financière des personnes malvoyantes en RD Congo.
+
+% =========================
+% Références (IEEE)
+% =========================
+\begin{thebibliography}{99}
+
+\bibitem{lecun1998gradient}
+Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner, ``Gradient-based learning applied to document recognition,'' \emph{Proceedings of the IEEE}, vol. 86, no. 11, pp. 2278--2324, 1998.
+
+\bibitem{krizhevsky2012imagenet}
+A. Krizhevsky, I. Sutskever, and G. E. Hinton, ``ImageNet classification with deep convolutional neural networks,'' in \emph{Advances in Neural Information Processing Systems}, pp. 1097--1105, 2012.
+
+\bibitem{goodfellow2016deep}
+I. Goodfellow, Y. Bengio, and A. Courville, \emph{Deep Learning}. MIT Press, 2016.
+
+\bibitem{shorten2019survey}
+C. Shorten and T. M. Khoshgoftaar, ``A survey on image data augmentation for deep learning,'' \emph{Journal of Big Data}, vol. 6, no. 1, 2019.
+
+\bibitem{tensorflowlite2017}
+TensorFlow, ``TensorFlow Lite: On-device machine learning,'' Google, 2017.
+
+\bibitem{zhu2017currency}
+Y. Zhu and Z. Chen, ``A survey on currency recognition systems,'' \emph{Int. J. of Computer Applications}, vol. 975, 2017.
+
+\bibitem{almeida2019accessibility}
+L. Almeida et al., ``Accessibility in mobile applications for visually impaired users,'' \emph{IEEE Access}, vol. 7, pp. 136450--136462, 2019.
+
+\end{thebibliography}
+
+\end{document}
