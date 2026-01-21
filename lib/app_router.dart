@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'results_screen.dart';
-import 'scanning_screen.dart';
 import 'models/recognition_result.dart';
 
 
@@ -16,7 +15,7 @@ final GoRouter router = GoRouter(
         final timestamp = state.uri.queryParameters['t'] ?? '0';
         // Clé unique pour forcer la reconstruction du widget
         return HomeScreen(
-          key: ValueKey('home_$autoStart\_$timestamp'),
+          key: ValueKey('home_${autoStart}_$timestamp'),
           autoStart: autoStart,
         );
       },

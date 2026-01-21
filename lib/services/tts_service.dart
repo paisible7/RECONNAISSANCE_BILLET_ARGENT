@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,57 +9,106 @@ class TtsService {
 
   final FlutterTts _flutterTts = FlutterTts();
   bool _isInitialized = false;
+  bool _isSpeaking = false;
+  Completer<void>? _speakCompleter;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
-      // Check available languages (debugging only)
       final languages = await _flutterTts.getLanguages;
-      debugPrint('🔊 TTS Languages disponibles: $languages');
+      debugPrint('TTS Languages disponibles: $languages');
 
-      // Force French language regardless of what getLanguages returns
-      // (sometimes getLanguages is empty or incomplete on Android)
       await _flutterTts.setLanguage('fr-FR');
-      debugPrint('🔊 TTS Langue forcée: fr-FR');
+      debugPrint('TTS Langue forcee: fr-FR');
 
       await _flutterTts.setSpeechRate(0.5);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
 
-      // Set up handlers for debugging
+      // Activer l'attente de completion
+      await _flutterTts.awaitSpeakCompletion(true);
+
       _flutterTts.setStartHandler(() {
-        debugPrint('🔊 TTS Started speaking');
+        _isSpeaking = true;
+        debugPrint('TTS Started speaking');
       });
 
       _flutterTts.setCompletionHandler(() {
-        debugPrint('🔊 TTS Completed');
+        _isSpeaking = false;
+        debugPrint('TTS Completed');
+        _speakCompleter?.complete();
+        _speakCompleter = null;
+      });
+
+      _flutterTts.setCancelHandler(() {
+        _isSpeaking = false;
+        debugPrint('TTS Cancelled');
+        _speakCompleter?.complete();
+        _speakCompleter = null;
       });
 
       _flutterTts.setErrorHandler((msg) {
-        debugPrint('❌ TTS Error: $msg');
+        _isSpeaking = false;
+        debugPrint('TTS Error: $msg');
+        _speakCompleter?.completeError(msg);
+        _speakCompleter = null;
       });
 
       _isInitialized = true;
-      debugPrint('✅ TTS Service initialized');
+      debugPrint('TTS Service initialized');
     } catch (e) {
-      debugPrint('❌ TTS Init error: $e');
+      debugPrint('TTS Init error: $e');
     }
   }
 
+  /// Parle le texte et attend la fin de l'annonce
   Future<void> speak(String text) async {
     if (!_isInitialized) await initialize();
     
-    debugPrint('🔊 TTS Speaking: $text');
-    
-    // Stop any current speech first
-    await _flutterTts.stop();
-    
-    final result = await _flutterTts.speak(text);
-    debugPrint('🔊 TTS speak() result: $result');
+    debugPrint('TTS Speaking: $text');
+
+    // Arreter toute parole en cours
+    await stop();
+
+    // Petit delai pour s'assurer que stop est termine
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    _isSpeaking = true;
+    _speakCompleter = Completer<void>();
+
+    try {
+      await _flutterTts.speak(text);
+      // Attendre la fin de la parole
+      await _speakCompleter?.future;
+    } catch (e) {
+      debugPrint('TTS speak error: $e');
+      _isSpeaking = false;
+    }
+  }
+
+  /// Parle le texte sans attendre (fire and forget)
+  Future<void> speakAsync(String text) async {
+    if (!_isInitialized) await initialize();
+
+    debugPrint('TTS Speaking async: $text');
+
+    await stop();
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    _isSpeaking = true;
+    await _flutterTts.speak(text);
   }
 
   Future<void> stop() async {
-    await _flutterTts.stop();
+    if (_isSpeaking || _speakCompleter != null) {
+      await _flutterTts.stop();
+      _isSpeaking = false;
+      _speakCompleter?.complete();
+      _speakCompleter = null;
+      debugPrint('TTS Stopped');
+    }
   }
+
+  bool get isSpeaking => _isSpeaking;
 }

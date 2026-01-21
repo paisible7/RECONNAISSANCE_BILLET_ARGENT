@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class FaceDetectionService {
@@ -11,7 +12,7 @@ class FaceDetectionService {
       enableClassification: false,
       enableLandmarks: false,
       enableTracking: false,
-      performanceMode: FaceDetectorMode.fast, // We just want to know if there is a face
+      performanceMode: FaceDetectorMode.fast,
     ),
   );
 
@@ -22,8 +23,8 @@ class FaceDetectionService {
       final List<Face> faces = await _faceDetector.processImage(inputImage);
       return faces.isNotEmpty;
     } catch (e) {
-      print('❌ Erreur détection visage: $e');
-      return false; // Assume no face on error to allow currency detection to proceed
+      debugPrint('Erreur detection visage: $e');
+      return false;
     }
   }
 

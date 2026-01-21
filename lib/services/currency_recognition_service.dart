@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'package:ningapi/models/recognition_result.dart';
@@ -13,36 +13,36 @@ class CurrencyRecognitionService {
   List<String> _labels = [];
   bool _isInitialized = false;
 
-  // Taille d'entrée du modèle (sera mise à jour dynamiquement)
-  int _inputSize = 250; 
+  // Taille d'entree du modele (MobileNetV2 utilise 224x224)
+  int _inputSize = 224;
   static const int numChannels = 3;
   
-  /// Initialise le modèle et charge les labels
+  /// Initialise le modele et charge les labels
   Future<void> initialize() async {
     if (_isInitialized) return;
 
     try {
       _interpreter = await Interpreter.fromAsset('assets/models/model.tflite');
-      print('✅ Modèle TFLite chargé');
+      debugPrint('Modele TFLite charge');
 
-      // Détection dynamique de la taille d'entrée
+      // Detection dynamique de la taille d'entree
       final inputTensor = _interpreter!.getInputTensor(0);
-      _inputSize = inputTensor.shape[1]; // [1, height, width, 3] -> on prend height (ou width, supposé carré)
-      print('📏 Taille d\'entrée détectée: $_inputSize x $_inputSize');
+      _inputSize = inputTensor.shape[1];
+      debugPrint('Taille entree detectee: $_inputSize x $_inputSize');
 
-      // Labels spécifiques au nouveau modèle (ordre alphabétique / défini par l'entraînement)
+      // Labels specifiques au modele (ordre alphabetique comme dans l'entrainement)
       _labels = [
-        '1\$', '10\$', '100\$', 
-        '10000FC', '1000FC', '100FC', 
-        '20\$', '20000FC', '200FC', 
-        '5\$', '50\$', 
+        '1\$', '10\$', '100\$',
+        '10000FC', '1000FC', '100FC',
+        '20\$', '20000FC', '200FC',
+        '5\$', '50\$',
         '5000FC', '500FC', '50FC'
       ];
-      print('✅ Labels chargés en mémoire: $_labels');
+      debugPrint('Labels charges: $_labels');
 
       _isInitialized = true;
     } catch (e) {
-      print('❌ Erreur d\'initialisation: $e');
+      debugPrint('Erreur initialisation: $e');
       rethrow;
     }
   }
@@ -64,7 +64,7 @@ class CurrencyRecognitionService {
       
       int maxIndex = 0;
       double maxProb = probabilities[0];
-      print('🔍 Probabilités: $probabilities');
+      debugPrint('Probabilites: $probabilities');
 
       for (int i = 1; i < probabilities.length; i++) {
         if (probabilities[i] > maxProb) {
@@ -73,14 +73,13 @@ class CurrencyRecognitionService {
         }
       }
       
-      print('🏆 Résultat: ${_labels[maxIndex]} ($maxProb)');
+      debugPrint('Resultat: ${_labels[maxIndex]} ($maxProb)');
 
       final allProbs = <String, double>{};
       for (int i = 0; i < _labels.length; i++) {
         allProbs[_labels[i]] = probabilities[i];
       }
 
-      // Parse denomination and currency from label (e.g., "1000 FC" or "20 USD")
       final label = _labels[maxIndex];
       String currency = 'FC';
       if (label.toUpperCase().contains('USD') || label.contains('\$')) {
@@ -95,7 +94,7 @@ class CurrencyRecognitionService {
         allProbabilities: allProbs,
       );
     } catch (e) {
-      print('❌ Erreur lors de la reconnaissance: $e');
+      debugPrint('Erreur reconnaissance: $e');
       rethrow;
     }
   }
@@ -105,12 +104,11 @@ class CurrencyRecognitionService {
     
     img.Image? image = img.decodeImage(bytes);
     if (image == null) {
-      throw Exception('Impossible de décoder l\'image');
+      throw Exception('Impossible de decoder image');
     }
 
     // Corriger l'orientation (EXIF)
     image = img.bakeOrientation(image);
-
 
     img.Image resized = img.copyResize(
       image,
@@ -119,17 +117,19 @@ class CurrencyRecognitionService {
       interpolation: img.Interpolation.linear,
     );
 
+    // Pretraitement MobileNetV2: normalisation dans [-1, 1]
+    // Equivalent de tf.keras.applications.mobilenet_v2.preprocess_input
+    // Formule: (pixel / 127.5) - 1.0
     List<List<List<double>>> processedImage = List.generate(
       _inputSize,
       (y) => List.generate(
         _inputSize,
         (x) {
           final pixel = resized.getPixel(x, y);
-          // Normalisation [0, 1] pour correspondre au script d'entraînement (Rescaling 1./255)
           return [
-            pixel.r / 255.0,
-            pixel.g / 255.0,
-            pixel.b / 255.0,
+            (pixel.r / 127.5) - 1.0,
+            (pixel.g / 127.5) - 1.0,
+            (pixel.b / 127.5) - 1.0,
           ];
         },
       ),

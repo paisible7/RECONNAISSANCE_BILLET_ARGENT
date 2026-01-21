@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ningapi/app_colors.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:ningapi/services/tts_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -22,56 +20,95 @@ class _HomeScreenState extends State<HomeScreen> {
   final TtsService _tts = TtsService();
   final ImagePicker _picker = ImagePicker();
   bool _isCameraOpen = false;
+  bool _isNavigating = false;
 
   @override
   void initState() {
     super.initState();
+    // Reinitialiser les flags au demarrage
+    _isCameraOpen = false;
+    _isNavigating = false;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       if (widget.autoStart) {
-        // Auto-démarrer le scan sans message de bienvenue
+        // Auto-demarrer le scan sans message de bienvenue
         _startScan();
       } else {
         // Message de bienvenue uniquement au premier lancement
-        _tts.speak("Bienvenue sur Ni nghapi. Touchez l'écran n'importe où pour scanner un billet.");
+        _tts.speakAsync("Bienvenue sur Ni nghapi. Touchez l'ecran n'importe ou pour scanner un billet.");
       }
     });
   }
 
-
+  @override
+  void dispose() {
+    // Arreter le TTS si on quitte l'ecran
+    _tts.stop();
+    super.dispose();
+  }
 
   Future<void> _startScan() async {
-    if (_isCameraOpen) return;
+    // Double protection contre les appels multiples
+    if (_isCameraOpen || _isNavigating) {
+      debugPrint("Scan deja en cours, ignore");
+      return;
+    }
+
     _isCameraOpen = true;
+    if (mounted) setState(() {});
 
     // Haptic feedback
     HapticFeedback.mediumImpact();
-    await _tts.speak("Ouverture de la caméra");
 
     try {
+      // Utiliser speakAsync pour ne pas bloquer l'ouverture de la camera
+      await _tts.speakAsync("Ouverture de la camera");
+
+      // Petit delai pour laisser le TTS commencer
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (!mounted) {
+        _isCameraOpen = false;
+        return;
+      }
+
       // Direct camera launch
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
         preferredCameraDevice: CameraDevice.rear,
       );
 
+      // Reinitialiser le flag camera
       _isCameraOpen = false;
 
-      if (pickedFile != null) {
+      if (pickedFile != null && mounted) {
+        _isNavigating = true;
+
+        // Navigate directly to processing
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ScanningScreen(imageFile: File(pickedFile.path)),
+          ),
+        );
+
+        // Quand on revient de la navigation, reinitialiser
         if (mounted) {
-          // Navigate directly to processing
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => ScanningScreen(imageFile: File(pickedFile.path)),
-            ),
-          );
+          _isNavigating = false;
+          setState(() {});
         }
-      } else {
-        await _tts.speak("Aucune photo prise.");
+      } else if (mounted) {
+        await _tts.speakAsync("Aucune photo prise.");
       }
     } catch (e) {
       _isCameraOpen = false;
+      _isNavigating = false;
       debugPrint("Error picking image: $e");
-      await _tts.speak("Erreur caméra.");
+      if (mounted) {
+        await _tts.speakAsync("Erreur camera. Veuillez reessayer.");
+        setState(() {});
+      }
     }
   }
 

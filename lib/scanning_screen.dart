@@ -20,6 +20,8 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
   late AnimationController _animationController;
   late Animation<double> _animation;
   final TtsService _tts = TtsService();
+  bool _isProcessing = false;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -33,35 +35,48 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _tts.speak("Analyse en cours");
+    // Utiliser speakAsync pour ne pas bloquer
+    _tts.speakAsync("Analyse en cours");
     _performRecognition();
   }
 
   Future<void> _performRecognition() async {
+    if (_isProcessing || _isDisposed) return;
+    _isProcessing = true;
+
     try {
-      // 1. D'abord, vérifier s'il s'agit d'un visage
+      // 1. D'abord, verifier s'il s'agit d'un visage
       final hasFace = await FaceDetectionService().hasFace(widget.imageFile);
       
+      if (_isDisposed || !mounted) return;
+
       if (hasFace) {
         // Si c'est un visage, on avertit l'utilisateur
-        await Future.delayed(const Duration(seconds: 1)); // Petit délai pour l'UX
+        await Future.delayed(const Duration(milliseconds: 500));
         await _tts.speak("Attention. Ceci n'est pas un billet, c'est un visage. Veuillez scanner un billet.");
         
-        if (mounted) {
-          // Retour à l'écran précédent après l'annonce
-          await Future.delayed(const Duration(seconds: 4)); 
-          if (mounted) Navigator.pop(context);
+        if (mounted && !_isDisposed) {
+          // Retour a l'ecran precedent apres l'annonce
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted && !_isDisposed) Navigator.pop(context);
         }
         return;
       }
 
       // 2. Si pas de visage, on lance la reconnaissance de billet
       final result = await CurrencyRecognitionService().recognizeCurrency(widget.imageFile);
-      await Future.delayed(const Duration(seconds: 2));
 
-      if (mounted) {
-        // Navigation avec Navigator au lieu de go_router pour ne pas reconstruire HomeScreen
-        Navigator.of(context).push(
+      if (_isDisposed || !mounted) return;
+
+      // Petit delai pour l'UX
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted && !_isDisposed) {
+        // Arreter le TTS avant navigation
+        await _tts.stop();
+
+        // Navigation avec Navigator - remplacer l'ecran actuel
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => ResultsScreen(
               imageFile: widget.imageFile,
@@ -71,17 +86,24 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
         );
       }
     } catch (e) {
-      if (mounted) {
-        await _tts.speak("Erreur lors de l'analyse. Veuillez réessayer.");
-        debugPrint('Erreur: $e');
-        Navigator.pop(context); // Return to Home
+      debugPrint('Erreur reconnaissance: $e');
+      if (mounted && !_isDisposed) {
+        await _tts.speak("Erreur lors de l'analyse. Veuillez reessayer.");
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted && !_isDisposed) {
+          Navigator.pop(context);
+        }
       }
+    } finally {
+      _isProcessing = false;
     }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _animationController.dispose();
+    _tts.stop();
     super.dispose();
   }
 
