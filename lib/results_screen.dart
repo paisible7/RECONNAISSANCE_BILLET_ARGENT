@@ -56,8 +56,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
       if (_isDisposed || !mounted) return;
 
-      // Attendre un peu puis annoncer l'aide (3 secondes pour laisser le temps de finir)
-      await Future.delayed(const Duration(seconds: 3));
+      // Attendre un peu puis annoncer l'aide (800ms est suffisant car speak attend deja la fin)
+      await Future.delayed(const Duration(milliseconds: 800));
 
       if (_isDisposed || !mounted) return;
 
