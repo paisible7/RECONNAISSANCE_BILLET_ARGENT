@@ -31,8 +31,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   void initState() {
     super.initState();
-    // Delai pour laisser la navigation se terminer
-    Future.delayed(const Duration(milliseconds: 300), () {
+    // Delai pour laisser la navigation se terminer (augmente a 600ms pour eviter conflit avec dispose)
+    Future.delayed(const Duration(milliseconds: 600), () {
       if (!_isDisposed && mounted) {
         _announceResult();
       }
@@ -56,12 +56,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
       if (_isDisposed || !mounted) return;
 
-      // Attendre un peu puis annoncer l'aide
-      await Future.delayed(const Duration(seconds: 2));
+      // Attendre un peu puis annoncer l'aide (3 secondes pour laisser le temps de finir)
+      await Future.delayed(const Duration(seconds: 3));
 
       if (_isDisposed || !mounted) return;
 
-      await _tts.speak("Appuyez pour repeter. Balayez pour scanner un autre billet.");
+      await _tts.speak("Appuyez pour répéter. Balayez pour scanner un autre billet.");
     } finally {
       if (!_isDisposed) {
         _isSpeaking = false;

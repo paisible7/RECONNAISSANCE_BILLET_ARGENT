@@ -26,19 +26,21 @@ class CurrencyResult {
     if (formattedDenomination.contains('FC')) {
       formattedDenomination = formattedDenomination.replaceAll('FC', '') + ' Francs Congolais';
     } else if (formattedDenomination.contains('\$') || formattedDenomination.contains('USD')) {
-      formattedDenomination = formattedDenomination.replaceAll('\$', '').replaceAll('USD', '') + ' Dollars';
+      // Gerer le singulier/pluriel pour Dollar(s)
+      bool isSingular = formattedDenomination.trim() == '1\$' || formattedDenomination.trim() == '1USD';
+      formattedDenomination = formattedDenomination.replaceAll('\$', '').replaceAll('USD', '') + (isSingular ? ' Dollar' : ' Dollars');
     }
 
-    if (confidence < 0.45) {
+    if (confidence < 0.35) {
       return "Je ne reconnais pas cet objet. Veuillez présenter un billet bien éclairé.";
     }
 
     if (isHighConfidence) {
-      return 'Billet détecté : $formattedDenomination';
+      return 'Billet détecté, $formattedDenomination';
     } else {
-      return 'Billet probable : $formattedDenomination. Confiance faible.';
+      return 'Billet probable, $formattedDenomination. Confiance faible.';
     }
   }
 
-  bool get isUnknown => confidence < 0.45;
+  bool get isUnknown => confidence < 0.35;
 }

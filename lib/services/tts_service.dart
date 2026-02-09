@@ -64,7 +64,14 @@ class TtsService {
 
   /// Parle le texte et attend la fin de l'annonce
   Future<void> speak(String text) async {
-    if (!_isInitialized) await initialize();
+    if (!_isInitialized) {
+      await initialize();
+      // Si toujours pas initialise apres tentative, on abandonne (ou on log)
+      if (!_isInitialized) {
+        debugPrint('TTS Erreur: Impossible d\'initialiser le service avant speak');
+        return;
+      }
+    }
     
     debugPrint('TTS Speaking: $text');
 
@@ -101,12 +108,16 @@ class TtsService {
   }
 
   Future<void> stop() async {
-    if (_isSpeaking || _speakCompleter != null) {
-      await _flutterTts.stop();
-      _isSpeaking = false;
-      _speakCompleter?.complete();
-      _speakCompleter = null;
-      debugPrint('TTS Stopped');
+    try {
+      if (_isSpeaking || _speakCompleter != null) {
+        await _flutterTts.stop();
+        _isSpeaking = false;
+        _speakCompleter?.complete();
+        _speakCompleter = null;
+        debugPrint('TTS Stopped');
+      }
+    } catch (e) {
+      debugPrint('TTS Stop Error: $e');
     }
   }
 

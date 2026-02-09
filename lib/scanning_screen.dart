@@ -22,6 +22,7 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
   final TtsService _tts = TtsService();
   bool _isProcessing = false;
   bool _isDisposed = false;
+  bool _stopTtsOnDispose = true;
 
   @override
   void initState() {
@@ -74,6 +75,7 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
       if (mounted && !_isDisposed) {
         // Arreter le TTS avant navigation
         await _tts.stop();
+        _stopTtsOnDispose = false;
 
         // Navigation avec Navigator - remplacer l'ecran actuel
         Navigator.of(context).pushReplacement(
@@ -103,7 +105,9 @@ class _ScanningScreenState extends State<ScanningScreen> with SingleTickerProvid
   void dispose() {
     _isDisposed = true;
     _animationController.dispose();
-    _tts.stop();
+    if (_stopTtsOnDispose) {
+      _tts.stop();
+    }
     super.dispose();
   }
 
